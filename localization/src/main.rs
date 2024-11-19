@@ -11,7 +11,8 @@ struct CliOpt {
     mode: String,
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let opt = CliOpt::from_args();
     let mode = opt.mode.clone();
     // always do self check
@@ -23,7 +24,7 @@ fn main() {
             // wait pr check
             pr_check::do_check();
             // do release
-            auto_release::do_release(opt);
+            auto_release::do_release().await;
         },
         "self_check" => exit(0),
         _ => {
