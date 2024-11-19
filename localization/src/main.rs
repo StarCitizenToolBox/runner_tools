@@ -1,13 +1,15 @@
+use std::env;
 use std::process::exit;
 use glob::glob;
 
 fn main() {
     // cli arguments
     let mode = std::env::args().nth(1).unwrap_or("self_check".to_string());
-    _self_check();
+    self_check();
     // switch mode
     match mode.as_str() {
-        "pr_check" => _pr_check(),
+        "pr_check" => pr_check(),
+        "auto_release" => auto_release(),
         "self_check" => exit(0),
         _ => {
             panic!("unknown mode: {}", mode);
@@ -15,13 +17,15 @@ fn main() {
     }
 }
 
-fn _self_check() {
+fn self_check() {
     // working dir
     let working_dir = std::env::current_dir().unwrap();
     println!("working dir: {:?}", working_dir);
+    let title = env::var("PR_TITLE").unwrap_or("".to_string());
+    println!("GH_PR_TITLE: {}", title);
 }
 
-fn _pr_check() {
+fn pr_check() {
     for entry in glob("./**/global.ini").unwrap() {
         match entry {
             Ok(path) => {
@@ -33,6 +37,10 @@ fn _pr_check() {
             }
         }
     }
+}
+
+fn auto_release() {
+    
 }
 
 fn _ini_check(path: std::path::PathBuf) {
