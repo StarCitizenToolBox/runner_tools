@@ -9,12 +9,6 @@ use structopt::StructOpt;
 struct CliOpt {
     #[structopt(short, long)]
     mode: String,
-    #[structopt(long)]
-    gh_repo: Option<String>,
-    #[structopt(long)]
-    gh_pr_number: Option<String>,
-    #[structopt(long)]
-    gh_pr_title: Option<String>,
 }
 
 fn main() {
@@ -45,11 +39,14 @@ fn self_check(opt: CliOpt) {
     let working_dir = std::env::current_dir().unwrap();
     println!("working dir: {:?}", working_dir);
     // gh_repo
-    println!("gh_repo: {:?}", opt.gh_repo.unwrap_or("".to_string()));
+    let gh_repo = std::env::var("GH_REPO").unwrap_or("".to_string());
+    println!("gh_repo: {:?}", gh_repo);
     // gh_pr_number
-    println!("gh_pr_number: {:?}", opt.gh_pr_number.unwrap_or("".to_string()));
+    let gh_pr_number = std::env::var("GH_PR_NUMBER").unwrap_or("".to_string());
+    println!("gh_pr_number: {:?}", gh_pr_number);
     // gh_pr_title
-    println!("gh_pr_title: {:?}", opt.gh_pr_title.unwrap_or("".to_string()));
+    let gh_pr_title = std::env::var("GH_PR_TITLE").unwrap_or("".to_string());
+    println!("gh_pr_title: {:?}", gh_pr_title);
     // get GH_TOKEN form env
     let gh_token = std::env::var("GH_TOKEN").unwrap_or("".to_string());
     println!("GH_TOKEN: {:?}", gh_token.len());
