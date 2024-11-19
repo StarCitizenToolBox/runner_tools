@@ -1,11 +1,24 @@
-use std::env;
 use std::process::exit;
 use glob::glob;
+use structopt::StructOpt;
+
+#[derive(StructOpt, Debug, Clone)]
+#[structopt(name = "basic")]
+struct CliOpt {
+    #[structopt(short, long)]
+    mode: String,
+    #[structopt(long)]
+    gh_repo: Option<String>,
+    #[structopt(long)]
+    gh_pr_number: Option<String>,
+    #[structopt(long)]
+    gh_pr_title: Option<String>,
+}
 
 fn main() {
-    // cli arguments
-    let mode = std::env::args().nth(1).unwrap_or("self_check".to_string());
-    self_check();
+    let opt = CliOpt::from_args();
+    let mode = opt.mode.clone();
+    self_check(opt.clone());
     // switch mode
     match mode.as_str() {
         "pr_check" => pr_check(),
@@ -17,12 +30,18 @@ fn main() {
     }
 }
 
-fn self_check() {
+fn self_check(opt: CliOpt) {
+    // mode
+    println!("mode: {}", opt.mode);
     // working dir
     let working_dir = std::env::current_dir().unwrap();
     println!("working dir: {:?}", working_dir);
-    let title = env::var("PR_TITLE").unwrap_or("".to_string());
-    println!("GH_PR_TITLE: {}", title);
+    // gh_repo
+    println!("gh_repo: {:?}", opt.gh_repo.unwrap_or("".to_string()));
+    // gh_pr_number
+    println!("gh_pr_number: {:?}", opt.gh_pr_number.unwrap_or("".to_string()));
+    // gh_pr_title
+    println!("gh_pr_title: {:?}", opt.gh_pr_title.unwrap_or("".to_string()));
 }
 
 fn pr_check() {
@@ -40,7 +59,7 @@ fn pr_check() {
 }
 
 fn auto_release() {
-    
+
 }
 
 fn _ini_check(path: std::path::PathBuf) {
