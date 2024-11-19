@@ -46,12 +46,12 @@ fn _ini_check(path: std::path::PathBuf) {
         }
         // check has '='
         if !line.contains("=") {
-            panic!("{}: missing '=' on line:", line_number);
+            panic!("missing '=' on line: {}", line_number);
         }
         // check kv , split on first `=`
         let kv: Vec<&str> = line.splitn(2, "=").collect();
         if kv.len() != 2 {
-            panic!("{}: invalid kv format", line_number);
+            panic!("invalid kv format: {}", line_number);
         }
 
         passed_lines += 1;
