@@ -1,5 +1,7 @@
 mod auto_release;
 mod pr_check;
+mod auto_api;
+mod utils;
 
 use std::process::exit;
 use structopt::StructOpt;
