@@ -3,6 +3,7 @@ use octocrab::{Octocrab, Page};
 
 use serde_derive::Deserialize;
 use serde_derive::Serialize;
+use serde_json::json;
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -56,13 +57,10 @@ pub async fn do_release() {
                 let branch = loc.branch.clone();
                 let release_name = release_name.clone();
                 tokio::spawn(async move {
-                    _create_github_repo_release(
-                        &gh_repo,
-                        &gh_token,
-                        &branch,
-                        &release_name,
-                    ).await;
-                }).await.unwrap();
+                    _create_github_repo_release(&gh_repo, &gh_token, &branch, &release_name).await;
+                })
+                .await
+                .unwrap();
             }
         }
     }
@@ -88,30 +86,57 @@ async fn _create_github_repo_release(
     let c = _get_github_client(Some(gh_token));
     let (o, r) = _get_github_repo(Some(gh_repo));
     let repo = c.repos(o, r);
-    let r = repo
-        .releases()
-        .create(version_name)
-        .target_commitish(branch)
-        .send()
-        .await
-        .unwrap();
-    // sleep 3s
-    tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
-    println!("generate_release_notes: {:?}", version_name);
+
+    _create_github_tag(gh_repo, gh_token, branch, version_name).await;
+
     let gen_notes = repo
         .releases()
         .generate_release_notes(version_name)
         .send()
-        .await
-        .unwrap();
-    println!("update_release_notes: {:?}", version_name);
-    repo.releases()
-        .update(*r.id)
-        .body(&gen_notes.body)
-        .name(version_name)
+        .await;
+
+    if gen_notes.is_err() {
+        println!("Failed to generate release notes: {:?}", gen_notes.err());
+        return;
+    }
+
+    let r = repo
+        .releases()
+        .create(version_name)
+        .target_commitish(branch)
+        .body(&gen_notes.unwrap().body)
+        .send()
+        .await;
+
+    if r.is_err() {
+        println!("Failed to create release: {:?}", r.err());
+        return;
+    }
+    println!("release created: {:?}", r.unwrap().tag_name);
+}
+
+async fn _create_github_tag(gh_repo: &str, gh_token: &str, branch: &str, name: &str) {
+    let client = reqwest::Client::new();
+    let url = format!("https://api.github.com/repos/{}/git/refs", gh_repo);
+    let body = json!({
+        "ref": format!("refs/tags/{}", name),
+        "sha": branch,
+    });
+
+    let response = client
+        .post(&url)
+        .header("Authorization", format!("token {}", gh_token))
+        .header("User-Agent", "reqwest")
+        .json(&body)
         .send()
         .await
         .unwrap();
+
+    if response.status().is_success() {
+        println!("Tag created successfully: {}", name);
+    } else {
+        println!("Failed to create tag: {}", response.text().await.unwrap());
+    }
 }
 
 async fn _get_github_repo_release(
