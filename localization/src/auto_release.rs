@@ -3,7 +3,6 @@ use octocrab::{Octocrab, Page};
 
 use serde_derive::Deserialize;
 use serde_derive::Serialize;
-use serde_json::json;
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -107,6 +106,8 @@ async fn _create_github_repo_release(
     repo.releases()
         .update(*r.id)
         .body(&gen_notes.body)
+        .name(branch)
+        .tag_name(version_name)
         .send()
         .await
         .unwrap();
