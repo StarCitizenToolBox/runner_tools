@@ -41,7 +41,7 @@ pub async fn do_release() {
         return;
     }
     let releases = _get_github_repo_release(&gh_repo, &gh_token).await.unwrap();
-    println!("releases: {:?}", releases);
+
     // check and create release
     for lang in &manifest.languages {
         for loc in &lang.localizations {
@@ -61,6 +61,8 @@ pub async fn do_release() {
                 })
                 .await
                 .unwrap();
+            }else {
+                println!("SKIP: release already exist: {:?}", release_name);
             }
         }
     }
@@ -82,13 +84,24 @@ async fn _create_github_repo_release(
     branch: &str,
     version_name: &str,
 ) {
-    println!("auto creating release: {:?}", version_name);
+    println!("Auto creating release: {:?}", version_name);
     let c = _get_github_client(Some(gh_token));
     let (o, r) = _get_github_repo(Some(gh_repo));
     let repo = c.repos(o, r);
 
-    _create_github_tag(gh_repo, gh_token, branch, version_name).await;
+    let r = repo
+        .releases()
+        .create(version_name)
+        .target_commitish(branch)
+        .body("auto release")
+        .name(version_name)
+        .send()
+        .await;
 
+    if r.is_err() {
+        println!("Failed to create release: {:?}", r.err());
+        return;
+    }
     let gen_notes = repo
         .releases()
         .generate_release_notes(version_name)
@@ -102,41 +115,18 @@ async fn _create_github_repo_release(
 
     let r = repo
         .releases()
-        .create(version_name)
-        .target_commitish(branch)
+        .update(*r.unwrap().id)
         .body(&gen_notes.unwrap().body)
+        .name(version_name)
         .send()
         .await;
 
     if r.is_err() {
-        println!("Failed to create release: {:?}", r.err());
+        println!("Failed to update release: {:?}", r.err());
         return;
     }
+
     println!("release created: {:?}", r.unwrap().tag_name);
-}
-
-async fn _create_github_tag(gh_repo: &str, gh_token: &str, branch: &str, name: &str) {
-    let client = reqwest::Client::new();
-    let url = format!("https://api.github.com/repos/{}/git/refs", gh_repo);
-    let body = json!({
-        "ref": format!("refs/tags/{}", name),
-        "sha": branch,
-    });
-
-    let response = client
-        .post(&url)
-        .header("Authorization", format!("token {}", gh_token))
-        .header("User-Agent", "reqwest")
-        .json(&body)
-        .send()
-        .await
-        .unwrap();
-
-    if response.status().is_success() {
-        println!("Tag created successfully: {}", name);
-    } else {
-        println!("Failed to create tag: {}", response.text().await.unwrap());
-    }
 }
 
 async fn _get_github_repo_release(
