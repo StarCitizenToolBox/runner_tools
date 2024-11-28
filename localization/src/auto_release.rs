@@ -95,6 +95,8 @@ async fn _create_github_repo_release(
         .send()
         .await
         .unwrap();
+    // sleep 3s
+    tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
     println!("generate_release_notes: {:?}", version_name);
     let gen_notes = repo
         .releases()
@@ -106,8 +108,7 @@ async fn _create_github_repo_release(
     repo.releases()
         .update(*r.id)
         .body(&gen_notes.body)
-        .name(branch)
-        .tag_name(version_name)
+        .name(version_name)
         .send()
         .await
         .unwrap();
