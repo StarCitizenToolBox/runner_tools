@@ -28,6 +28,7 @@ pub struct _Language {
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct _Localization {
+    pub enabled: bool,
     pub branch: String,
     pub version: String,
     pub info: String,

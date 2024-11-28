@@ -65,7 +65,7 @@ impl AutoApi {
                 if !found {
                     let game_channel = if release.version == "PU" { "PU" } else { "PTU" };
                     new_data.push(ApiLocalizationData {
-                        enable: true,
+                        enable: release.enabled,
                         version_name: release.version.clone(),
                         update_at: self.update_time.clone(),
                         info: release.info.clone(),
@@ -82,13 +82,13 @@ impl AutoApi {
                     .is_some()
             });
             let new_data = serde_json::to_string_pretty(&new_data).unwrap();
-            
+
             // diff data
             if data == new_data {
                 println!("Skip commit： no change in localization api data: {}", lang);
                 continue;
             }
-            
+
             println!("updating localization api data: {}", lang);
             repo.update_file(
                 file.clone(),
