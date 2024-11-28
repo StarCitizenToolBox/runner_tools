@@ -3,6 +3,7 @@ use octocrab::{Octocrab, Page};
 
 use serde_derive::Deserialize;
 use serde_derive::Serialize;
+use serde_json::json;
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -41,8 +42,32 @@ pub async fn do_release() {
     }
     let releases = _get_github_repo_release(&gh_repo, &gh_token).await.unwrap();
     println!("releases: {:?}", releases);
+    // check and create release
+    for lang in &manifest.languages {
+        for loc in &lang.localizations {
+            let release_name = loc.version.clone();
+            if releases
+                .items
+                .iter()
+                .find(|r| r.name == Some(release_name.clone()))
+                .is_none()
+            {
+                let gh_repo = gh_repo.clone();
+                let gh_token = gh_token.clone();
+                let branch = loc.branch.clone();
+                let release_name = release_name.clone();
+                tokio::spawn(async move {
+                    _create_github_repo_release(
+                        &gh_repo,
+                        &gh_token,
+                        &branch,
+                        &release_name,
+                    ).await;
+                }).await.unwrap();
+            }
+        }
+    }
 }
-
 async fn _read_repo_manifest() -> LocalizationManifestData {
     let file_path = "manifest.json";
     // check exist
@@ -52,6 +77,39 @@ async fn _read_repo_manifest() -> LocalizationManifestData {
     let file_content = tokio::fs::read_to_string(file_path).await.unwrap();
     let manifest: LocalizationManifestData = serde_json::from_str(&file_content).unwrap();
     manifest
+}
+
+async fn _create_github_repo_release(
+    gh_repo: &str,
+    gh_token: &str,
+    branch: &str,
+    version_name: &str,
+) {
+    println!("auto creating release: {:?}", version_name);
+    let c = _get_github_client(Some(gh_token));
+    let (o, r) = _get_github_repo(Some(gh_repo));
+    let repo = c.repos(o, r);
+    let r = repo
+        .releases()
+        .create(version_name)
+        .target_commitish(branch)
+        .send()
+        .await
+        .unwrap();
+    println!("generate_release_notes: {:?}", version_name);
+    let gen_notes = repo
+        .releases()
+        .generate_release_notes(version_name)
+        .send()
+        .await
+        .unwrap();
+    println!("update_release_notes: {:?}", version_name);
+    repo.releases()
+        .update(*r.id)
+        .body(&gen_notes.body)
+        .send()
+        .await
+        .unwrap();
 }
 
 async fn _get_github_repo_release(
