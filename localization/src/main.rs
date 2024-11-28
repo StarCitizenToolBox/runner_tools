@@ -1,13 +1,33 @@
-use std::process::exit;
-use glob::glob;
+mod auto_release;
+mod pr_check;
+mod auto_api;
+mod utils;
 
-fn main() {
-    // cli arguments
-    let mode = std::env::args().nth(1).unwrap_or("self_check".to_string());
-    _self_check();
+use std::process::exit;
+use structopt::StructOpt;
+
+#[derive(StructOpt, Debug, Clone)]
+#[structopt(name = "basic")]
+struct CliOpt {
+    #[structopt(short, long)]
+    mode: String,
+}
+
+#[tokio::main]
+async fn main() {
+    let opt = CliOpt::from_args();
+    let mode = opt.mode.clone();
+    // always do self check
+    self_check(opt.clone());
     // switch mode
     match mode.as_str() {
-        "pr_check" => _pr_check(),
+        "pr_check" => pr_check::do_check(),
+        "auto_release" => {
+            // wait pr check
+            pr_check::do_check();
+            // do release
+            auto_release::do_release().await;
+        },
         "self_check" => exit(0),
         _ => {
             panic!("unknown mode: {}", mode);
@@ -15,46 +35,22 @@ fn main() {
     }
 }
 
-fn _self_check() {
+fn self_check(opt: CliOpt) {
+    // mode
+    println!("mode: {}", opt.mode);
     // working dir
     let working_dir = std::env::current_dir().unwrap();
     println!("working dir: {:?}", working_dir);
-}
-
-fn _pr_check() {
-    for entry in glob("./**/global.ini").unwrap() {
-        match entry {
-            Ok(path) => {
-                println!("global.ini: {:?}", path.display());
-                _ini_check(path)
-            }
-            Err(e) => {
-                println!("{:?}", e);
-            }
-        }
-    }
-}
-
-fn _ini_check(path: std::path::PathBuf) {
-    let content = std::fs::read_to_string(path.clone()).unwrap();
-    let mut line_number = 0;
-    let mut passed_lines = 0;
-    for line in content.lines() {
-        line_number +=1;
-        if line.trim().is_empty() || line.trim().starts_with("#") {
-            continue
-        }
-        // check has '='
-        if !line.contains("=") {
-            panic!("missing '=' on line: {}", line_number);
-        }
-        // check kv , split on first `=`
-        let kv: Vec<&str> = line.splitn(2, "=").collect();
-        if kv.len() != 2 {
-            panic!("invalid kv format: {}", line_number);
-        }
-
-        passed_lines += 1;
-    }
-    println!("{}: passed lines: {}", path.display(), passed_lines);
+    // gh_repo
+    let gh_repo = std::env::var("GH_REPO").unwrap_or("".to_string());
+    println!("gh_repo: {:?}", gh_repo);
+    // gh_pr_number
+    let gh_pr_number = std::env::var("GH_PR_NUMBER").unwrap_or("".to_string());
+    println!("gh_pr_number: {:?}", gh_pr_number);
+    // gh_pr_title
+    let gh_pr_title = std::env::var("GH_PR_TITLE").unwrap_or("".to_string());
+    println!("gh_pr_title: {:?}", gh_pr_title);
+    // get GH_TOKEN form env
+    let gh_token = std::env::var("GH_TOKEN").unwrap_or("".to_string());
+    println!("GH_TOKEN: {:?}", gh_token.len());
 }
