@@ -52,27 +52,33 @@ impl AutoApi {
                 .send()
                 .await
                 .unwrap();
+
             let content = contents.items.first().unwrap();
             let data = content.decoded_content().unwrap();
-            let json_data: Vec<ApiLocalizationData> = serde_json::from_str(&data).unwrap();
-            let mut new_data = json_data.clone();
+            let old_data: Vec<ApiLocalizationData> = serde_json::from_str(&data).unwrap();
+            let mut new_data: Vec<ApiLocalizationData> = Vec::new();
             for release in releases {
-                let found = new_data
-                    .iter_mut()
-                    .find(|d| d.version_name == release.version)
-                    .is_some();
+                let found_data = old_data.iter().find(|d| d.version_name == release.version);
 
-                if !found {
-                    let game_channel = if release.version == "PU" { "PU" } else { "PTU" };
-                    new_data.push(ApiLocalizationData {
-                        enable: release.enabled,
-                        version_name: release.version.clone(),
-                        update_at: self.update_time.clone(),
-                        info: release.info.clone(),
-                        game_channel: game_channel.to_string(),
-                        note: release.note.clone(),
-                    });
+                let mut update_at = self.update_time.clone();
+                if found_data.is_some() {
+                    // if it has data, keep update_at
+                    update_at = found_data.unwrap().update_at.clone();
                 }
+
+                let game_channel = if release.version.contains("PU") {
+                    "PU"
+                } else {
+                    "PTU"
+                };
+                new_data.push(ApiLocalizationData {
+                    enable: release.enabled,
+                    version_name: release.version.clone(),
+                    update_at,
+                    info: release.info.clone(),
+                    game_channel: game_channel.to_string(),
+                    note: release.note.clone(),
+                });
             }
             // remove outdated data (not in releases)
             new_data.retain(|d| {
@@ -95,7 +101,8 @@ impl AutoApi {
                 &format!("Auto update localization api data: {}", lang),
                 &new_data,
                 &content.sha,
-            ).branch(&self.repo_branch)
+            )
+            .branch(&self.repo_branch)
             .send()
             .await
             .unwrap();

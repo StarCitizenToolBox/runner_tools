@@ -1,8 +1,8 @@
-use octocrab::models::repos::Release;
-use octocrab::Page;
-
 use crate::auto_api::AutoApi;
 use crate::utils::{get_github_client, get_github_repo_name};
+use octocrab::models::repos::Release;
+use octocrab::repos::releases::MakeLatest;
+use octocrab::Page;
 use serde_derive::Deserialize;
 use serde_derive::Serialize;
 
@@ -103,12 +103,20 @@ async fn _create_github_repo_release(
     let (o, r) = get_github_repo_name(Some(gh_repo));
     let repo = c.repos(o, r);
 
+    let make_latest = if version_name.contains("_CN_V") {
+        MakeLatest::True
+    } else {
+        MakeLatest::False
+    };
+    let make_pre = version_name.contains("PTU");
     let r = repo
         .releases()
         .create(version_name)
         .target_commitish(branch)
         .body("auto release")
         .name(version_name)
+        .make_latest(make_latest)
+        .prerelease(make_pre)
         .send()
         .await;
 
