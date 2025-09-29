@@ -6,6 +6,10 @@ mod utils;
 use std::process::exit;
 use structopt::StructOpt;
 
+// ANSI color codes
+const RED: &str = "\x1b[31m";
+const RESET: &str = "\x1b[0m";
+
 #[derive(StructOpt, Debug, Clone)]
 #[structopt(name = "basic")]
 struct CliOpt {
@@ -21,10 +25,20 @@ async fn main() {
     self_check(opt.clone());
     // switch mode
     match mode.as_str() {
-        "pr_check" => pr_check::do_check(),
+        "pr_check" => {
+            let error_count = pr_check::do_check();
+            if error_count > 0 {
+                println!("{}Found {} total errors{}", RED, error_count, RESET);
+                exit(1);
+            }
+        },
         "auto_release" => {
             // wait pr check
-            pr_check::do_check();
+            let error_count = pr_check::do_check();
+            if error_count > 0 {
+                println!("{}Found {} total errors, aborting release{}", RED, error_count, RESET);
+                exit(1);
+            }
             // do release
             auto_release::do_release().await;
         },
