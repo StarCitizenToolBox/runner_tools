@@ -21,10 +21,20 @@ async fn main() {
     self_check(opt.clone());
     // switch mode
     match mode.as_str() {
-        "pr_check" => pr_check::do_check(),
+        "pr_check" => {
+            let error_count = pr_check::do_check();
+            if error_count > 0 {
+                println!("Found {} total errors", error_count);
+                exit(1);
+            }
+        },
         "auto_release" => {
             // wait pr check
-            pr_check::do_check();
+            let error_count = pr_check::do_check();
+            if error_count > 0 {
+                println!("Found {} total errors, aborting release", error_count);
+                exit(1);
+            }
             // do release
             auto_release::do_release().await;
         },
