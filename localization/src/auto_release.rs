@@ -54,11 +54,10 @@ pub async fn do_release() {
         auto_api.updated_releases.insert(lang.name.clone(), vec![]);
         for loc in &lang.localizations {
             let release_name = loc.version.clone();
-            if releases
+            if !releases
                 .items
                 .iter()
-                .find(|r| r.name == Some(release_name.clone()))
-                .is_none()
+                .any(|r| r.name == Some(release_name.clone()))
             {
                 let gh_repo = gh_repo.clone();
                 let gh_token = gh_token.clone();
@@ -75,7 +74,7 @@ pub async fn do_release() {
             auto_api
                 .updated_releases
                 .entry(lang.name.clone())
-                .or_insert(vec![])
+                .or_default()
                 .push(loc.clone());
         }
     }

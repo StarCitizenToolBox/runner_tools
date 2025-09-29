@@ -61,9 +61,9 @@ impl AutoApi {
                 let found_data = old_data.iter().find(|d| d.version_name == release.version);
 
                 let mut update_at = self.update_time.clone();
-                if found_data.is_some() {
+                if let Some(data) = found_data {
                     // if it has data, keep update_at
-                    update_at = found_data.unwrap().update_at.clone();
+                    update_at = data.update_at.clone();
                 }
 
                 let game_channel = if release.version.contains("PU") {
@@ -84,8 +84,7 @@ impl AutoApi {
             new_data.retain(|d| {
                 releases
                     .iter()
-                    .find(|r| r.version == d.version_name)
-                    .is_some()
+                    .any(|r| r.version == d.version_name)
             });
             let new_data = serde_json::to_string_pretty(&new_data).unwrap();
 
@@ -98,7 +97,7 @@ impl AutoApi {
             println!("updating localization api data: {}", lang);
             repo.update_file(
                 file.clone(),
-                &format!("Auto update localization api data: {}", lang),
+                format!("Auto update localization api data: {}", lang),
                 &new_data,
                 &content.sha,
             )
